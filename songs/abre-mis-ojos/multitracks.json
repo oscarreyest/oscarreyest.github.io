@@ -13,6 +13,26 @@
       "name": "Bajo",
       "id": "bajo",
       "url": "https://oscarreyest.github.io/songs/abre-mis-ojos/bajo.mp3"
+    },
+    {
+      "name": "Guitarra",
+      "id": "guitarra",
+      "url": "https://oscarreyest.github.io/songs/abre-mis-ojos/guitarra.mp3"
+    },
+    {
+      "name": "Piano",
+      "id": "piano",
+      "url": "https://oscarreyest.github.io/songs/abre-mis-ojos/piano.mp3"
+    },
+    {
+      "name": "Vocalista",
+      "id": "vocalista",
+      "url": "https://oscarreyest.github.io/songs/abre-mis-ojos/vocalista.mp3"
+    },
+    {
+      "name": "Coros",
+      "id": "coros",
+      "url": "https://oscarreyest.github.io/songs/abre-mis-ojos/coros.mp3"
     }
   ]
 }
