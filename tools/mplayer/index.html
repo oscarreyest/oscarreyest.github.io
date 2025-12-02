@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Multitrack Player – NE Alabanza</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: #020617;
+      --border: #1f2937;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.12);
+      --danger: #f97373;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px 14px 30px;
+    }
+    header {
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(22px, 4vw, 28px);
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .pill {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 12px 12px 14px;
+      box-shadow: 0 16px 40px rgba(15,23,42,0.7);
+    }
+
+    .song-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .song-meta span {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+    }
+
+    .transport {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    button {
+      font: inherit;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      padding: 6px 12px;
+      background: rgba(15,23,42,0.95);
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: #ecfdf5;
+    }
+    button.danger {
+      border-color: rgba(248, 113, 113, 0.9);
+      color: #fee2e2;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .time {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .progress-wrap {
+      margin: 8px 0 14px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #030712;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid #111827;
+    }
+    .progress-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #a3e635);
+      transition: width 0.08s linear;
+    }
+
+    .stems {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stem-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 4fr) auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 9px;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(31,41,55,0.9);
+    }
+    @media (max-width: 720px) {
+      .stem-row {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 3fr);
+        grid-template-rows: auto auto;
+        grid-template-areas:
+          "label slider"
+          "buttons buttons";
+      }
+      .stem-label { grid-area: label; }
+      .stem-slider { grid-area: slider; }
+      .stem-buttons { grid-area: buttons; justify-content: flex-end; }
+    }
+
+    .stem-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stem-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .stem-id {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .stem-slider input[type="range"] {
+      width: 100%;
+    }
+    .stem-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    .small-btn {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+    }
+    .small-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #bbf7d0;
+    }
+    .small-btn.solo.active {
+      background: rgba(59,130,246,0.16);
+      border-color: #60a5fa;
+      color: #bfdbfe;
+    }
+    .error {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #fecaca;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Multitrack Player</h1>
+    <p class="subtitle">
+      Usa <code>?song=abre-mis-ojos</code> en la URL para cargar una canción específica.
+    </p>
+    <div class="pill">Beta – sincroniza varias pistas para práctica del equipo.</div>
+  </header>
+
+  <div class="panel">
+    <div id="songHeader">
+      <div class="song-meta" id="songMeta"></div>
+    </div>
+
+    <div class="transport">
+      <button id="playBtn" class="primary" disabled>▶ Reproducir</button>
+      <button id="pauseBtn" disabled>⏸ Pausa</button>
+      <button id="stopBtn" class="danger" disabled>⏹ Detener</button>
+      <span class="time" id="timeDisplay">00:00 / 00:00</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-inner" id="progressInner"></div>
+      </div>
+    </div>
+
+    <div class="stems" id="stemsContainer">
+      <!-- rows created by JS -->
+    </div>
+
+    <div id="errorBox" class="error" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const songSlug = params.get("song") || "abre-mis-ojos"; // default for now
+  const dataUrl = `/songs/${songSlug}/multitracks.json`;
+
+  let stems = [];
+  let masterDuration = 0;
+  let updateTimer = null;
+  let isPlaying = false;
+  let soloActive = null; // stem index or null
+
+  const playBtn = document.getElementById("playBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const timeDisplay = document.getElementById("timeDisplay");
+  const stemsContainer = document.getElementById("stemsContainer");
+  const progressBar = document.getElementById("progressBar");
+  const progressInner = document.getElementById("progressInner");
+  const metaBox = document.getElementById("songMeta");
+  const errorBox = document.getElementById("errorBox");
+
+  function formatTime(seconds) {
+    if (!isFinite(seconds)) return "00:00";
+    const s = Math.floor(seconds % 60);
+    const m = Math.floor(seconds / 60);
+    return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+  }
+
+  function setError(msg) {
+    errorBox.style.display = msg ? "block" : "none";
+    errorBox.textContent = msg || "";
+  }
+
+  function createStemRow(stem, index) {
+    const row = document.createElement("div");
+    row.className = "stem-row";
+
+    const label = document.createElement("div");
+    label.className = "stem-label";
+    const name = document.createElement("div");
+    name.className = "stem-name";
+    name.textContent = stem.name;
+    const idEl = document.createElement("div");
+    idEl.className = "stem-id";
+    idEl.textContent = stem.id || "";
+    label.appendChild(name);
+    label.appendChild(idEl);
+
+    const sliderWrap = document.createElement("div");
+    sliderWrap.className = "stem-slider";
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "1";
+    slider.step = "0.01";
+    slider.value = stem.volume || 1;
+    slider.addEventListener("input", () => {
+      stem.audio.volume = parseFloat(slider.value);
+    });
+    sliderWrap.appendChild(slider);
+
+    const buttonsWrap = document.createElement("div");
+    buttonsWrap.className = "stem-buttons";
+
+    const muteBtn = document.createElement("button");
+    muteBtn.className = "small-btn mute";
+    muteBtn.textContent = "Mudo";
+    muteBtn.addEventListener("click", () => {
+      stem.muted = !stem.muted;
+      stem.audio.muted = stem.muted;
+      muteBtn.classList.toggle("active", stem.muted);
+    });
+
+    const soloBtn = document.createElement("button");
+    soloBtn.className = "small-btn solo";
+    soloBtn.textContent = "Solo";
+    soloBtn.addEventListener("click", () => {
+      if (soloActive === index) {
+        soloActive = null;
+        stems.forEach((s, i) => {
+          s.audio.muted = s.muted;
+        });
+        document.querySelectorAll(".solo").forEach(btn => btn.classList.remove("active"));
+      } else {
+        soloActive = index;
+        stems.forEach((s, i) => {
+          const active = i === index;
+          s.audio.muted = !active;
+        });
+        document.querySelectorAll(".solo").forEach(btn => btn.classList.remove("active"));
+        soloBtn.classList.add("active");
+      }
+    });
+
+    buttonsWrap.appendChild(muteBtn);
+    buttonsWrap.appendChild(soloBtn);
+
+    row.appendChild(label);
+    row.appendChild(sliderWrap);
+    row.appendChild(buttonsWrap);
+
+    return row;
+  }
+
+  function syncTo(time) {
+    stems.forEach(stem => {
+      if (isFinite(stem.audio.duration) && Math.abs(stem.audio.currentTime - time) > 0.05) {
+        stem.audio.currentTime = Math.min(time, stem.audio.duration);
+      }
+    });
+  }
+
+  function getMasterTime() {
+    if (!stems.length) return 0;
+    return stems[0].audio.currentTime || 0;
+  }
+
+  function updateProgress() {
+    const current = getMasterTime();
+    const fraction = masterDuration ? (current / masterDuration) : 0;
+    progressInner.style.width = (fraction * 100) + "%";
+    timeDisplay.textContent = `${formatTime(current)} / ${formatTime(masterDuration)}`;
+  }
+
+  function startLoop() {
+    if (updateTimer) cancelAnimationFrame(updateTimer);
+    const loop = () => {
+      if (isPlaying) updateProgress();
+      updateTimer = requestAnimationFrame(loop);
+    };
+    loop();
+  }
+
+  function playAll() {
+    if (!stems.length) return;
+    setError("");
+    stems.forEach(stem => {
+      const p = stem.audio.play();
+      if (p && p.catch) {
+        p.catch(() => {
+          setError("El navegador bloqueó la reproducción automática. Presiona reproducir de nuevo.");
+        });
+      }
+    });
+    isPlaying = true;
+    playBtn.disabled = true;
+    pauseBtn.disabled = false;
+    stopBtn.disabled = false;
+  }
+
+  function pauseAll() {
+    stems.forEach(stem => stem.audio.pause());
+    isPlaying = false;
+    playBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function stopAll() {
+    stems.forEach(stem => {
+      stem.audio.pause();
+      stem.audio.currentTime = 0;
+    });
+    isPlaying = false;
+    playBtn.disabled = false;
+    pauseBtn.disabled = true;
+    updateProgress();
+  }
+
+  playBtn.addEventListener("click", playAll);
+  pauseBtn.addEventListener("click", pauseAll);
+  stopBtn.addEventListener("click", stopAll);
+
+  progressBar.addEventListener("click", (e) => {
+    if (!masterDuration) return;
+    const rect = progressBar.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const newTime = Math.max(0, Math.min(masterDuration * ratio, masterDuration));
+    syncTo(newTime);
+    updateProgress();
+  });
+
+  function initFromData(data) {
+    document.title = `${data.title || "Canción"} – Multitrack Player`;
+    metaBox.innerHTML = "";
+
+    if (data.title) {
+      const t = document.createElement("span");
+      t.textContent = data.title;
+      metaBox.appendChild(t);
+    }
+    if (data.artist) {
+      const a = document.createElement("span");
+      a.textContent = data.artist;
+      metaBox.appendChild(a);
+    }
+    if (data.bpm) {
+      const b = document.createElement("span");
+      b.textContent = `${data.bpm} BPM`;
+      metaBox.appendChild(b);
+    }
+    if (data.time_signature) {
+      const ts = document.createElement("span");
+      ts.textContent = data.time_signature;
+      metaBox.appendChild(ts);
+    }
+
+    stemsContainer.innerHTML = "";
+    stems = [];
+
+    (data.stems || []).forEach((stemData, index) => {
+      const audio = new Audio(stemData.url);
+      audio.preload = "metadata";
+      audio.volume = stemData.volume != null ? stemData.volume : 1;
+      audio.addEventListener("loadedmetadata", () => {
+        if (audio.duration > masterDuration) {
+          masterDuration = audio.duration;
+          updateProgress();
+        }
+      });
+      audio.addEventListener("ended", () => {
+        // when first track ends, we consider all ended
+        if (index === 0) {
+          stopAll();
+        }
+      });
+      const stem = {
+        name: stemData.name || `Pista ${index+1}`,
+        id: stemData.id || "",
+        audio,
+        muted: false,
+        volume: audio.volume
+      };
+      stems.push(stem);
+      const row = createStemRow(stem, index);
+      stemsContainer.appendChild(row);
+    });
+
+    if (!stems.length) {
+      setError("No se encontraron pistas en este multitracks.json");
+      playBtn.disabled = true;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      return;
+    }
+
+    playBtn.disabled = false;
+    pauseBtn.disabled = true;
+    stopBtn.disabled = true;
+    setError("");
+    startLoop();
+  }
+
+  fetch(dataUrl)
+    .then(r => {
+      if (!r.ok) throw new Error("No se pudo cargar el archivo de la canción.");
+      return r.json();
+    })
+    .then(initFromData)
+    .catch(err => {
+      console.error(err);
+      setError("Error al cargar la canción. Verifica la ruta: " + dataUrl);
+    });
+
+})();
+</script>
+</body>
+</html>
