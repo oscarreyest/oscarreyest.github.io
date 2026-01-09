@@ -6,18 +6,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta http-equiv="refresh" content="0; url=about:blank">
   <script>
-    (function () {
-      try {
-        const p = new URLSearchParams(location.search);
-        const s = p.get('s') || '';
-        if (!s) throw new Error('Missing s');
-        const target = `${location.origin}/ChordsView/?song=${encodeURIComponent(s)}`;
-        location.replace(target);
-      } catch (e) {
-        document.write('<p style="font:14px system-ui;margin:20px">Invalid link.</p>');
-      }
-    })();
-  </script>
+  (function () {
+    try {
+      const params = new URLSearchParams(location.search);
+
+      // Forward everything exactly as received
+      const target = `${location.origin}/ChordsView/?${params.toString()}`;
+
+      location.replace(target);
+    } catch (e) {
+      document.write('<p style="font:14px system-ui;margin:20px">Invalid link.</p>');
+    }
+  })();
+</script>
 </head>
 <body></body>
 </html>
